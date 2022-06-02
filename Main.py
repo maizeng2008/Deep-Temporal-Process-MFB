@@ -13,6 +13,9 @@ from preprocess.Dataset import get_dataloader
 from transformer.Models import Transformer
 from tqdm import tqdm
 
+import random
+from datetime import datetime
+
 
 def prepare_dataloader(opt):
     """ Load data and prepare dataloader. """
@@ -123,7 +126,7 @@ def eval_epoch(model, validation_data, pred_loss_func, opt):
     return total_event_ll / total_num_event, total_event_rate / total_num_pred, rmse
 
 
-def train(model, training_data, validation_data, optimizer, scheduler, pred_loss_func, opt):
+def train(model, training_data, validation_data, optimizer, scheduler, pred_loss_func, opt, log_name):
     """ Start training. """
 
     valid_event_losses = []  # validation log-likelihood
@@ -155,11 +158,21 @@ def train(model, training_data, validation_data, optimizer, scheduler, pred_loss
               .format(event=max(valid_event_losses), pred=max(valid_pred_losses), rmse=min(valid_rmse)))
 
         # logging
-        with open(opt.log, 'a') as f:
+        with open(log_name, 'a') as f:
             f.write('{epoch}, {ll: 8.5f}, {acc: 8.5f}, {rmse: 8.5f}\n'
                     .format(epoch=epoch, ll=valid_event, acc=valid_type, rmse=valid_time))
 
         scheduler.step()
+
+
+def same_seed(seed): 
+    '''Fixes random number generator seeds for reproducibility.'''
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
 
 def main():
@@ -192,11 +205,22 @@ def main():
     # default device is CUDA
     opt.device = torch.device('cuda')
 
+    # Creating a datetime object so we can test.
+    random_seed = datetime.now()
+
+    # Converting a to string in the desired format (YYYYMMDD) using strftime
+    # and then to int.
+    random_seed = int(random_seed.strftime('%Y%m%d'))
+
     # setup the log file
-    with open(opt.log, 'w') as f:
+    log_name = opt.log.format(datetime.now())
+    with open(log_name, 'w') as f:
         f.write('Epoch, Log-likelihood, Accuracy, RMSE\n')
 
     print('[Info] parameters: {}'.format(opt))
+
+    """ set random seed """
+    same_seed(random_seed)
 
     """ prepare dataloader """
     trainloader, testloader, num_types = prepare_dataloader(opt)
@@ -231,7 +255,7 @@ def main():
     print('[Info] Number of parameters: {}'.format(num_params))
 
     """ train the model """
-    train(model, trainloader, testloader, optimizer, scheduler, pred_loss_func, opt)
+    train(model, trainloader, testloader, optimizer, scheduler, pred_loss_func, opt, log_name)
 
 
 if __name__ == '__main__':
