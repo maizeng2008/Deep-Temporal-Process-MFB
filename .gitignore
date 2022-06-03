@@ -1,6 +1,9 @@
 data/
 log/
 
+.DS_Store
+log.txt
+run_so.sh
 __pycache__/
 .idea/
 

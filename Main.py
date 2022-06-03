@@ -44,6 +44,13 @@ def train_epoch(model, training_data, optimizer, pred_loss_func, opt):
 
     model.train()
 
+    # check weights
+    params = []
+    for param in model.parameters():
+        params.append(param.view(-1))
+    params = torch.cat(params)
+    print(params)
+
     total_event_ll = 0  # cumulative event log-likelihood
     total_time_se = 0  # cumulative time prediction squared-error
     total_event_rate = 0  # cumulative number of correct prediction
@@ -182,6 +189,8 @@ def main():
 
     parser.add_argument('-data', required=True)
 
+    parser.add_argument('-seed', required=True)
+
     parser.add_argument('-epoch', type=int, default=30)
     parser.add_argument('-batch_size', type=int, default=16)
 
@@ -206,11 +215,7 @@ def main():
     opt.device = torch.device('cuda')
 
     # Creating a datetime object so we can test.
-    random_seed = datetime.now()
-
-    # Converting a to string in the desired format (YYYYMMDD) using strftime
-    # and then to int.
-    random_seed = int(random_seed.strftime('%Y%m%d'))
+    random_seed = int(opt.seed)
 
     # setup the log file
     log_name = opt.log.format(datetime.now())
@@ -237,6 +242,7 @@ def main():
         d_v=opt.d_v,
         dropout=opt.dropout,
     )
+
     model.to(opt.device)
 
     """ optimizer and scheduler """
